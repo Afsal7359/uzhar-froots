@@ -1,0 +1,9 @@
+{
+  "name": "uzhar-seed",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Seed script for Uzhar Fruoots Google Sheets CMS",
+  "dependencies": {
+    "googleapis": "^144.0.0"
+  }
+}
