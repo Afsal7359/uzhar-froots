@@ -20,7 +20,7 @@ export default function FlavourSection({ flavours }) {
           {flavours.map(flavour => (
             <div key={flavour.id} className="flav-tile">
               <img
-                src={`/${flavour.image_url}`}
+                src={flavour.image_url?.startsWith("http") ? flavour.image_url : `/${flavour.image_url}`}
                 alt={flavour.name}
                 className="flav-tile-img"
               />

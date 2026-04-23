@@ -7,7 +7,6 @@ const NAV = [
   { to: '/admin',           icon: '📊', label: 'Dashboard',      end: true },
   { section: 'Content' },
   { to: '/admin/products',  icon: '📦', label: 'Products' },
-  { to: '/admin/flavours',  icon: '🍊', label: 'Flavours' },
   { to: '/admin/reviews',   icon: '⭐', label: 'Reviews' },
   { to: '/admin/faqs',      icon: '❓', label: 'FAQs' },
   { to: '/admin/uses',      icon: '🥤', label: 'Use Cases' },

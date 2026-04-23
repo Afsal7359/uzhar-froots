@@ -1,6 +1,6 @@
-import { useState, useEffect, useContext } from 'react'
+import { useState, useEffect, useContext, useRef } from 'react'
 import { TokenContext } from '../context'
-import { adminRead, adminSave } from '../../lib/sheets'
+import { adminRead, adminSave, uploadImage } from '../../lib/sheets'
 
 export default function CrudPage({
   sheet,
@@ -18,8 +18,10 @@ export default function CrudPage({
   const [modal,   setModal]   = useState(null)   // null | 'add' | 'edit'
   const [editing, setEditing] = useState(null)
   const [form,    setForm]    = useState({})
-  const [saving,  setSaving]  = useState(false)
-  const [error,   setError]   = useState('')
+  const [saving,       setSaving]       = useState(false)
+  const [error,        setError]        = useState('')
+  const [imgLoading,   setImgLoading]   = useState({})
+  const fileInputRefs = useRef({})
 
   useEffect(() => { load() }, [])
 
@@ -41,6 +43,7 @@ export default function CrudPage({
     setForm({ ...defaultValues })
     setError('')
     setSaving(false)
+    setImgLoading({})
     setModal('add')
   }
 
@@ -49,8 +52,24 @@ export default function CrudPage({
     setForm({ ...row })
     setError('')
     setSaving(false)
+    setImgLoading({})
     setModal('edit')
   }
+
+  async function handleImageChange(fieldKey, file) {
+    if (!file) return
+    setImgLoading(p => ({ ...p, [fieldKey]: true }))
+    setError('')
+    try {
+      const path = await uploadImage(file)
+      setForm(p => ({ ...p, [fieldKey]: path }))
+    } catch (err) {
+      setError('Upload failed: ' + err.message)
+    } finally {
+      setImgLoading(p => ({ ...p, [fieldKey]: false }))
+    }
+  }
+
 
   async function handleSave(e) {
     e.preventDefault()
@@ -199,7 +218,49 @@ export default function CrudPage({
                 {fields.map(f => (
                   <div key={f.key} className="form-group">
                     <label>{f.label}{f.required && ' *'}</label>
-                    {f.type === 'textarea' || f.type === 'json' ? (
+                    {f.type === 'image' ? (
+                      <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                        {/* Current image preview */}
+                        {form[f.key] ? (
+                          <div style={{ position:'relative', display:'inline-block', alignSelf:'flex-start' }}>
+                            <img
+                              src={form[f.key]}
+                              alt="preview"
+                              style={{ height:110, maxWidth:220, objectFit:'cover', borderRadius:8, border:'1px solid var(--border)', display:'block' }}
+                              onError={e => { e.target.style.opacity='.3' }}
+                            />
+                            <div style={{ fontSize:'.68rem', color:'var(--ink3)', marginTop:4, wordBreak:'break-all' }}>{form[f.key]}</div>
+                          </div>
+                        ) : (
+                          <div style={{ width:120, height:80, borderRadius:8, border:'2px dashed var(--border)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--ink3)', fontSize:'.75rem' }}>
+                            No image
+                          </div>
+                        )}
+
+                        {/* Upload button */}
+                        <label style={{
+                          display:'inline-flex', alignItems:'center', gap:8,
+                          padding:'8px 16px', borderRadius:'var(--r)',
+                          background: imgLoading[f.key] ? 'var(--bg2)' : 'var(--green)',
+                          color: imgLoading[f.key] ? 'var(--ink3)' : '#fff',
+                          fontSize:'.8rem', fontWeight:600,
+                          cursor: imgLoading[f.key] ? 'not-allowed' : 'pointer',
+                          alignSelf:'flex-start',
+                          border:'none',
+                        }}>
+                          {imgLoading[f.key] ? '⏳ Uploading…' : '📁 Choose Image'}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            style={{ display:'none' }}
+                            ref={el => { fileInputRefs.current[f.key] = el }}
+                            onChange={e => handleImageChange(f.key, e.target.files[0])}
+                            disabled={!!imgLoading[f.key]}
+                          />
+                        </label>
+                        <div className="hint">Max 4 MB · JPG, PNG, WebP · Uploads to project assets folder</div>
+                      </div>
+                    ) : f.type === 'textarea' || f.type === 'json' ? (
                       <textarea
                         rows={f.type === 'json' ? 6 : 3}
                         value={fieldValue(f.key)}
@@ -242,8 +303,9 @@ export default function CrudPage({
                   </div>
                 ))}
                 <div className="form-actions">
-                  <button type="submit" className="btn btn-primary" disabled={saving}>
-                    {saving ? 'Saving…' : 'Save'}
+                  <button type="submit" className="btn btn-primary"
+                    disabled={saving || Object.values(imgLoading).some(Boolean)}>
+                    {saving ? 'Saving…' : Object.values(imgLoading).some(Boolean) ? 'Uploading image…' : 'Save'}
                   </button>
                   <button type="button" className="btn btn-ghost" onClick={() => setModal(null)}>
                     Cancel

@@ -36,7 +36,7 @@ export default function SingleFlavoursSection({ singles, onAddToCart }) {
               >
                 <div className="single-img-area">
                   <img
-                    src={`/${product.image_url}`}
+                    src={product.image_url?.startsWith("http") ? product.image_url : `/${product.image_url}`}
                     alt={product.name}
                     className="single-real-img"
                   />

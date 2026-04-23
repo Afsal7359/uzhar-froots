@@ -2,35 +2,32 @@
  * Uzhar Fruoots — Google Apps Script API
  * ─────────────────────────────────────────────────────────────────────────────
  *
- * STEP 1 — SET YOUR ADMIN CREDENTIALS (do this FIRST, only once):
- *   1. In the Apps Script editor, open the function list (top toolbar)
- *   2. Select "setupAdmin" from the dropdown
- *   3. Click ▶ Run
- *   4. Change the username/password in that function below before running
+ * STEP 1 — SET ADMIN CREDENTIALS (run once):
+ *   Select "setupAdmin" → Click ▶ Run
  *
- * STEP 2 — DEPLOY:
- *   1. Deploy → New deployment → Web app
- *   2. Execute as: Me
- *   3. Who has access: Anyone
- *   4. Copy the Web app URL → paste in .env as VITE_SCRIPT_URL=...
+ * STEP 2 — SET GITHUB TOKEN (run once, needed for image uploads):
+ *   1. Go to github.com → Settings → Developer settings → Personal access tokens → Fine-grained
+ *   2. Create token with "Contents" read+write permission for your repo
+ *   3. Edit setupGitHub() below with your token + repo, then click ▶ Run
  *
- * STEP 3 — TO CHANGE PASSWORD LATER:
- *   Edit setupAdmin() below → Run it again
+ * STEP 3 — DEPLOY:
+ *   Deploy → New deployment → Web app → Execute as: Me → Anyone can access
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ★ CHANGE THESE then run setupAdmin() once from the Apps Script editor
+// ★ Run setupAdmin() once to save credentials
 // ─────────────────────────────────────────────────────────────────────────────
 function setupAdmin() {
   PropertiesService.getScriptProperties().setProperties({
-    'ADMIN_USER': 'uzhar_admin',      // ← change this username
-    'ADMIN_PASS': 'Uzhar@2025!',      // ← change this password
+      'ADMIN_USER': 'uzharfroot@2026gmail.com',      // ← change this username
+    'ADMIN_PASS': 'uzhar@froot#2026!',   
   })
   Logger.log('✅ Admin credentials saved.')
 }
 
+
 // ─────────────────────────────────────────────────────────────────────────────
-// GET — used for: read data + login + fetchAll
+// GET
 // ─────────────────────────────────────────────────────────────────────────────
 function doGet(e) {
   try {
@@ -44,7 +41,7 @@ function doGet(e) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// POST — used for: save data (avoids URL length limits)
+// POST
 // ─────────────────────────────────────────────────────────────────────────────
 function doPost(e) {
   try {
@@ -54,7 +51,7 @@ function doPost(e) {
   }
 }
 
-// ── FETCH ALL (single request — returns every sheet at once) ──────────────────
+// ── FETCH ALL ─────────────────────────────────────────────────────────────────
 function handleFetchAll() {
   const ss    = SpreadsheetApp.getActiveSpreadsheet()
   const names = [
@@ -73,16 +70,14 @@ function handleFetchAll() {
 function handleRead(e) {
   const sheetName = e.parameter.sheet
   if (!sheetName) return out({ error: 'Missing ?sheet= parameter' })
-
   const tab = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName)
   if (!tab) return out({ values: [] })
-
   return out({ values: tab.getDataRange().getValues() })
 }
 
 // ── LOGIN ─────────────────────────────────────────────────────────────────────
 function handleLogin(e) {
-  const props    = PropertiesService.getScriptProperties()
+  const props         = PropertiesService.getScriptProperties()
   const expected_user = props.getProperty('ADMIN_USER')
   const expected_pass = props.getProperty('ADMIN_PASS')
 
@@ -97,35 +92,24 @@ function handleLogin(e) {
     return out({ error: 'Invalid username or password.' })
   }
 
-  // Generate a session token valid for 8 hours
   const token  = Utilities.getUuid()
   const expiry = Date.now() + 8 * 60 * 60 * 1000
   props.setProperty('TOKEN_' + token, String(expiry))
-
   return out({ token: token, expiry: expiry })
 }
 
 // ── SAVE ──────────────────────────────────────────────────────────────────────
 function handleSave(e) {
-  // Read from POST body (form-encoded) or GET params
-  const params = e.parameter || {}
-
+  const params    = e.parameter || {}
   const token     = params.token
   const sheetName = params.sheet
   const valuesRaw = params.values
 
   if (!token)     return out({ error: 'Missing token. Please sign in again.' })
   if (!sheetName) return out({ error: 'Missing sheet name.' })
-
-  // Verify token
-  const props  = PropertiesService.getScriptProperties()
-  const expiry = Number(props.getProperty('TOKEN_' + token) || 0)
-  if (!expiry || Date.now() > expiry) {
-    return out({ error: 'Session expired. Please sign in again.' })
-  }
+  if (!verifyToken(token)) return out({ error: 'Session expired. Please sign in again.' })
 
   const values = JSON.parse(valuesRaw || '[]')
-
   const ss  = SpreadsheetApp.getActiveSpreadsheet()
   let   tab = ss.getSheetByName(sheetName)
   if (!tab) {
@@ -133,12 +117,44 @@ function handleSave(e) {
   } else {
     tab.clearContents()
   }
-
   if (values.length > 0) {
     tab.getRange(1, 1, values.length, values[0].length).setValues(values)
   }
-
   return out({ ok: true, rows: values.length - 1 })
+}
+
+// ── IMAGE UPLOAD → Google Drive ───────────────────────────────────────────────
+function handleImageUpload(e) {
+  if (!verifyToken(e.parameter.token)) {
+    return out({ error: 'Session expired. Please sign in again.' })
+  }
+
+  var data     = e.parameter.data
+  var mimeType = e.parameter.mimeType || 'image/jpeg'
+  var fileName = e.parameter.fileName || ('img_' + Date.now() + '.jpg')
+
+  if (!data) return out({ error: 'No image data received.' })
+
+  // Get or create folder in Drive
+  var folderName = 'Uzhar Fruoots Images'
+  var folders    = DriveApp.getFoldersByName(folderName)
+  var folder     = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName)
+
+  var blob = Utilities.newBlob(Utilities.base64Decode(data), mimeType, fileName)
+  var file = folder.createFile(blob)
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW)
+
+  // thumbnail URL works in <img> tags without any login
+  var url = 'https://drive.google.com/thumbnail?id=' + file.getId() + '&sz=w800'
+  return out({ url: url })
+}
+
+// ── TOKEN VERIFY ──────────────────────────────────────────────────────────────
+function verifyToken(token) {
+  if (!token) return false
+  const props  = PropertiesService.getScriptProperties()
+  const expiry = Number(props.getProperty('TOKEN_' + token) || 0)
+  return expiry > 0 && Date.now() <= expiry
 }
 
 // ── HELPER ────────────────────────────────────────────────────────────────────

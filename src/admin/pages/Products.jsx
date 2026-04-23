@@ -13,7 +13,7 @@ const FIELDS = [
   { key: 'category',     label: 'Category',               required: true, type: 'select', options: [{ value:'combo', label:'Combo Pack' }, { value:'single', label:'Single Flavour' }] },
   { key: 'sub_title',    label: 'Sub Title',              type: 'textarea' },
   { key: 'ribbon_label', label: 'Ribbon Label',           hint: 'e.g. Starter Pack, Best Value (leave empty for none)' },
-  { key: 'image_url',    label: 'Image Path',             hint: 'e.g. assets/mango-web.png' },
+  { key: 'image_url',    label: 'Product Image',          type: 'image' },
   { key: 'features',     label: 'Features (JSON Array)',  type: 'json', hint: '["Feature one","Feature two"]' },
   { key: 'price_label',  label: 'Price Label',            hint: 'e.g. Enquire, Enquire for price' },
   { key: 'sort_order',   label: 'Sort Order',             type: 'number' },

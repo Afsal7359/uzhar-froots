@@ -151,6 +151,32 @@ export async function fetchAllData() {
   }
 }
 
+// ── IMAGE UPLOAD → ImgBB (free image hosting, direct URL) ────────────────────
+export async function uploadImage(file) {
+  const apiKey = import.meta.env.VITE_IMGBB_KEY
+  if (!apiKey || apiKey === 'your_imgbb_api_key_here') {
+    throw new Error('Add VITE_IMGBB_KEY to .env — get a free key at imgbb.com/api')
+  }
+  if (file.size > 4 * 1024 * 1024) throw new Error('Image must be under 4 MB')
+
+  const base64 = await new Promise((res, rej) => {
+    const reader = new FileReader()
+    reader.onload  = () => res(reader.result.split(',')[1])
+    reader.onerror = rej
+    reader.readAsDataURL(file)
+  })
+
+  const body = new FormData()
+  body.append('key', apiKey)
+  body.append('image', base64)
+  body.append('name', file.name.replace(/\.[^.]+$/, ''))
+
+  const resp = await fetch('https://api.imgbb.com/1/upload', { method: 'POST', body })
+  const data = await resp.json()
+  if (!data.success) throw new Error(data.error?.message || 'ImgBB upload failed')
+  return data.data.url  // e.g. https://i.ibb.co/xxx/image.jpg
+}
+
 // ── ADMIN LOGIN ───────────────────────────────────────────────────────────────
 export async function adminLogin(username, password) {
   if (!SCRIPT_URL) throw new Error('VITE_SCRIPT_URL not set in .env')

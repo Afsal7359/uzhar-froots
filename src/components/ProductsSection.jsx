@@ -15,7 +15,7 @@ export default function ProductsSection({ combos, onAddToCart }) {
             <div key={product.id} className="prod-card">
               <div className="prod-img-area">
                 <img
-                  src={`/${product.image_url}`}
+                  src={product.image_url?.startsWith("http") ? product.image_url : `/${product.image_url}`}
                   alt={product.name}
                   className="prod-real-img"
                 />

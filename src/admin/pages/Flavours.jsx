@@ -10,7 +10,7 @@ const COLUMNS = [
 const FIELDS = [
   { key: 'name',       label: 'Flavour Name',   required: true },
   { key: 'note',       label: 'Note / Tagline', hint: 'e.g. Alphonso blend · Tropical sweet' },
-  { key: 'image_url',  label: 'Image Path',     hint: 'e.g. assets/Mango.jpeg' },
+  { key: 'image_url',  label: 'Flavour Image',  type: 'image' },
   { key: 'sort_order', label: 'Sort Order',     type: 'number' },
 ]
 

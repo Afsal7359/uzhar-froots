@@ -61,7 +61,7 @@ export default function CartDrawer({ cart, isOpen, onClose, onQtyChange, contact
                 <div key={item.id} className="cd-item">
                   <div className="cd-item-icon">
                     <img
-                      src={`/${item.icon}`}
+                      src={item.icon?.startsWith("http") ? item.icon : `/${item.icon}`}
                       alt={item.name}
                       style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 8 }}
                     />
