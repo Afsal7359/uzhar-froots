@@ -17,6 +17,8 @@ const NAV = [
   { to: '/admin/stats',     icon: '📈', label: 'Stats Bar' },
   { to: '/admin/franchise', icon: '🤝', label: 'Franchise' },
   { to: '/admin/settings',  icon: '⚙️', label: 'Site Settings' },
+  { section: 'Setup' },
+  { to: '/admin/seed',      icon: '🌱', label: 'Seed Database' },
 ]
 
 export default function Layout() {

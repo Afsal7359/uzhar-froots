@@ -116,36 +116,74 @@ export async function fetchAllSettings() {
   return result
 }
 
-// ── FETCH ALL DATA IN ONE REQUEST ─────────────────────────────────────────────
-// Returns fully-parsed data for every section in a single Apps Script call.
-// Falls back to null if unavailable (caller uses static fallbacks).
-export async function fetchAllData() {
-  if (!SCRIPT_URL) return null
+// ── CACHE KEY ─────────────────────────────────────────────────────────────────
+const CACHE_KEY    = 'uzhar_data_v1'
+const CACHE_MAX_MS = 5 * 60 * 1000   // treat cache stale after 5 min (refresh silently)
+
+function readCache() {
   try {
-    const res = await fetch(`${SCRIPT_URL}?action=fetchAll`)
-    if (!res.ok) return null
-    const { data } = await res.json()
-    if (!data) return null
+    const raw = localStorage.getItem(CACHE_KEY)
+    if (!raw) return null
+    return JSON.parse(raw)
+  } catch { return null }
+}
 
-    const p = name => parseRows(data[name] || [])
+function writeCache(data) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data }))
+  } catch { /* storage full — ignore */ }
+}
 
-    const settings = (() => {
-      const result = {}
-      p('site_settings').forEach(r => { result[r.key] = json(r.value) })
-      return result
-    })()
+// ── FETCH ALL DATA IN ONE REQUEST ─────────────────────────────────────────────
+// Returns fully-parsed data. Uses stale-while-revalidate:
+//   - Resolves with cached data immediately if available (< 5 min old → skip network)
+//   - Always kicks off a background fetch and updates cache for next load
+async function _fetchFromNetwork() {
+  if (!SCRIPT_URL) return null
+  const res = await fetch(`${SCRIPT_URL}?action=fetchAll`)
+  if (!res.ok) return null
+  const { data } = await res.json()
+  if (!data) return null
 
-    return {
-      marqueeItems:  p('marquee_items').filter(r => bool(r.is_active)).sort((a,b) => num(a.sort_order)-num(b.sort_order)),
-      stats:         p('stats').sort((a,b) => num(a.sort_order)-num(b.sort_order)).map(r => ({...r, is_bold_label: bool(r.is_bold_label)})),
-      flavours:      p('flavours').filter(r => bool(r.is_active)).sort((a,b) => num(a.sort_order)-num(b.sort_order)),
-      products:      p('products').filter(r => bool(r.is_active)).sort((a,b) => num(a.sort_order)-num(b.sort_order)).map(r => ({...r, features: json(r.features)||[]})),
-      processSteps:  p('process_steps').sort((a,b) => num(a.sort_order)-num(b.sort_order)).map(r => ({...r, step_number: num(r.step_number)})),
-      uses:          p('use_cases').filter(r => bool(r.is_active)).sort((a,b) => num(a.sort_order)-num(b.sort_order)),
-      reviews:       p('reviews').filter(r => bool(r.is_active)).sort((a,b) => num(a.sort_order)-num(b.sort_order)).map(r => ({...r, rating: num(r.rating), is_highlight: bool(r.is_highlight), is_verified: bool(r.is_verified)})),
-      faqs:          p('faqs').filter(r => bool(r.is_active)).sort((a,b) => num(a.sort_order)-num(b.sort_order)),
-      settings,
+  const p = name => parseRows(data[name] || [])
+  const settings = (() => {
+    const result = {}
+    p('site_settings').forEach(r => { result[r.key] = json(r.value) })
+    return result
+  })()
+
+  return {
+    marqueeItems:  p('marquee_items').filter(r => bool(r.is_active)).sort((a,b) => num(a.sort_order)-num(b.sort_order)),
+    stats:         p('stats').sort((a,b) => num(a.sort_order)-num(b.sort_order)).map(r => ({...r, is_bold_label: bool(r.is_bold_label)})),
+    flavours:      p('flavours').filter(r => bool(r.is_active)).sort((a,b) => num(a.sort_order)-num(b.sort_order)),
+    products:      p('products').filter(r => bool(r.is_active)).sort((a,b) => num(a.sort_order)-num(b.sort_order)).map(r => ({...r, features: json(r.features)||[]})),
+    processSteps:  p('process_steps').sort((a,b) => num(a.sort_order)-num(b.sort_order)).map(r => ({...r, step_number: num(r.step_number)})),
+    uses:          p('use_cases').filter(r => bool(r.is_active)).sort((a,b) => num(a.sort_order)-num(b.sort_order)),
+    reviews:       p('reviews').filter(r => bool(r.is_active)).sort((a,b) => num(a.sort_order)-num(b.sort_order)).map(r => ({...r, rating: num(r.rating), is_highlight: bool(r.is_highlight), is_verified: bool(r.is_verified)})),
+    faqs:          p('faqs').filter(r => bool(r.is_active)).sort((a,b) => num(a.sort_order)-num(b.sort_order)),
+    settings,
+  }
+}
+
+export async function fetchAllData() {
+  const cached = readCache()
+
+  if (cached) {
+    const age = Date.now() - cached.ts
+    if (age < CACHE_MAX_MS) {
+      // Fresh cache — return immediately, no network call needed
+      return cached.data
     }
+    // Stale cache — return immediately AND refresh in background
+    _fetchFromNetwork().then(fresh => { if (fresh) writeCache(fresh) }).catch(() => {})
+    return cached.data
+  }
+
+  // No cache — must wait for network (first ever load)
+  try {
+    const fresh = await _fetchFromNetwork()
+    if (fresh) writeCache(fresh)
+    return fresh
   } catch {
     return null
   }
@@ -195,7 +233,9 @@ export async function adminRead(sheet) {
 }
 
 // ── ADMIN SAVE (POST with form-encoding — avoids CORS preflight) ──────────────
+// Clears frontend cache so next page load fetches fresh data
 export async function adminSave(sheet, rows, token) {
+  try { localStorage.removeItem(CACHE_KEY) } catch { /* ignore */ }
   const headers = HEADERS[sheet]
   if (!headers) throw new Error(`Unknown sheet: ${sheet}`)
 

@@ -1,23 +1,5 @@
 import { useState, useEffect } from 'react'
-import {
-  fetchMarqueeItems, fetchStats, fetchFlavours, fetchProducts,
-  fetchProcessSteps, fetchUseCases, fetchReviews, fetchFAQs, fetchAllSettings,
-} from './lib/sheets'
-import {
-  fallbackMarqueeItems,
-  fallbackStats,
-  fallbackFlavours,
-  fallbackProducts,
-  fallbackProcessSteps,
-  fallbackUseCases,
-  fallbackReviews,
-  fallbackFAQs,
-  fallbackHero,
-  fallbackContact,
-  fallbackProcessIntro,
-  fallbackWhyData,
-  fallbackFooter,
-} from './lib/fallback'
+import { fetchAllData } from './lib/db'
 
 import Nav from './components/Nav'
 import MarqueeBanner from './components/MarqueeBanner'
@@ -35,59 +17,21 @@ import ContactSection from './components/ContactSection'
 import Footer from './components/Footer'
 import CartDrawer from './components/CartDrawer'
 import WaFloat from './components/WaFloat'
+import PageSkeleton from './components/PageSkeleton'
 
 export default function App() {
-  const [cart, setCart] = useState({})
-  const [cartOpen, setCartOpen] = useState(false)
-  const [toastMsg, setToastMsg] = useState('')
-  const [toastVisible, setToastVisible] = useState(false)
+  const [cart,        setCart]        = useState({})
+  const [cartOpen,    setCartOpen]    = useState(false)
+  const [toastMsg,    setToastMsg]    = useState('')
+  const [toastVisible,setToastVisible]= useState(false)
+  const [data,        setData]        = useState(null)
+  const [loading,     setLoading]     = useState(true)
 
-  // Data state — initialised with fallbacks so page renders instantly
-  const [marqueeItems, setMarqueeItems] = useState(fallbackMarqueeItems)
-  const [stats,        setStats]        = useState(fallbackStats)
-  const [flavours,     setFlavours]     = useState(fallbackFlavours)
-  const [combos,       setCombos]       = useState(fallbackProducts.filter(p => p.category === 'combo'))
-  const [singles,      setSingles]      = useState(fallbackProducts.filter(p => p.category === 'single'))
-  const [processSteps, setProcessSteps] = useState(fallbackProcessSteps)
-  const [uses,         setUses]         = useState(fallbackUseCases)
-  const [reviews,      setReviews]      = useState(fallbackReviews)
-  const [faqs,         setFAQs]         = useState(fallbackFAQs)
-  const [hero,         setHero]         = useState(fallbackHero)
-  const [contact,      setContact]      = useState(fallbackContact)
-  const [processIntro, setProcessIntro] = useState(fallbackProcessIntro)
-  const [whyData,      setWhyData]      = useState(fallbackWhyData)
-  const [footer,       setFooter]       = useState(fallbackFooter)
-
-  // Fetch live data in background — all run in parallel, update silently
   useEffect(() => {
-    Promise.all([
-      fetchMarqueeItems(),
-      fetchStats(),
-      fetchFlavours(),
-      fetchProducts(),
-      fetchProcessSteps(),
-      fetchUseCases(),
-      fetchReviews(),
-      fetchFAQs(),
-      fetchAllSettings(),
-    ]).then(([mqItems, statsData, flavoursData, allProducts, stepsData, usesData, reviewsData, faqsData, settings]) => {
-      if (mqItems.length)      setMarqueeItems(mqItems)
-      if (statsData.length)    setStats(statsData)
-      if (flavoursData.length) setFlavours(flavoursData)
-      if (allProducts.length) {
-        setCombos(allProducts.filter(p => p.category === 'combo'))
-        setSingles(allProducts.filter(p => p.category === 'single'))
-      }
-      if (stepsData.length)    setProcessSteps(stepsData)
-      if (usesData.length)     setUses(usesData)
-      if (reviewsData.length)  setReviews(reviewsData)
-      if (faqsData.length)     setFAQs(faqsData)
-      if (settings.hero)          setHero(settings.hero)
-      if (settings.contact)       setContact(settings.contact)
-      if (settings.process_intro) setProcessIntro(settings.process_intro)
-      if (settings.why_us)        setWhyData(settings.why_us)
-      if (settings.footer)        setFooter(settings.footer)
-    }).catch(() => {/* keep fallbacks on network error */})
+    fetchAllData().then(result => {
+      if (result) setData(result)
+      setLoading(false)
+    })
   }, [])
 
   function showToast(msg) {
@@ -129,22 +73,35 @@ export default function App() {
 
   const cartCount = Object.values(cart).reduce((sum, item) => sum + item.qty, 0)
 
+  const combos  = data?.products?.filter(p => p.category === 'combo')  || []
+  const singles = data?.products?.filter(p => p.category === 'single') || []
+  const contact = data?.settings?.contact || {}
+  const footer  = data?.settings?.footer  || {}
+
   return (
     <>
       <Nav cartCount={cartCount} onCartOpen={() => setCartOpen(true)} />
-      <MarqueeBanner items={marqueeItems} />
-      <Hero hero={hero} />
-      <StatsBar stats={stats} />
-      <ProductsSection combos={combos} onAddToCart={handleAddToCart} />
-      <SingleFlavoursSection singles={singles} onAddToCart={handleAddToCart} />
-      <FranchiseSection />
-      <ProcessSection steps={processSteps} intro={processIntro} />
-      <UsesSection uses={uses} />
-      <WhySection whyData={whyData} />
-      <ReviewsSection reviews={reviews} />
-      <FAQSection faqs={faqs} />
-      <ContactSection contact={contact} />
-      <Footer footer={footer} contact={contact} />
+
+      {loading ? (
+        <PageSkeleton />
+      ) : (
+        <>
+          <MarqueeBanner items={data?.marqueeItems || []} />
+          <Hero hero={data?.settings?.hero} />
+          <StatsBar stats={data?.stats || []} />
+          <ProductsSection combos={combos} onAddToCart={handleAddToCart} />
+          <SingleFlavoursSection singles={singles} onAddToCart={handleAddToCart} />
+          <FranchiseSection />
+          <ProcessSection steps={data?.processSteps || []} intro={data?.settings?.process_intro} />
+          <UsesSection uses={data?.uses || []} />
+          <WhySection whyData={data?.settings?.why_us} />
+          <ReviewsSection reviews={data?.reviews || []} />
+          <FAQSection faqs={data?.faqs || []} />
+          <ContactSection contact={contact} />
+          <Footer footer={footer} contact={contact} />
+        </>
+      )}
+
       <CartDrawer
         cart={cart}
         isOpen={cartOpen}
@@ -153,9 +110,7 @@ export default function App() {
         contact={contact}
       />
       {toastVisible && (
-        <div className={`toast${toastVisible ? ' show' : ''}`}>
-          {toastMsg}
-        </div>
+        <div className={`toast${toastVisible ? ' show' : ''}`}>{toastMsg}</div>
       )}
       <WaFloat waNumber={contact?.wa_number} />
     </>

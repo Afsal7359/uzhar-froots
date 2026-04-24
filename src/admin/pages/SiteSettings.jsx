@@ -1,6 +1,5 @@
-import { useState, useEffect, useContext } from 'react'
-import { TokenContext } from '../context'
-import { adminRead, adminSave } from '../../lib/sheets'
+import { useState, useEffect } from 'react'
+import { adminReadSettings, adminSaveSetting } from '../../lib/db'
 
 const SETTINGS_KEYS = [
   { key: 'contact',       label: 'Contact Info' },
@@ -10,30 +9,22 @@ const SETTINGS_KEYS = [
 ]
 
 export default function SiteSettings() {
-  const { token }         = useContext(TokenContext)
-  const [allRows, setAllRows] = useState([])
-  const [editing, setEditing] = useState(null)
-  const [draft,   setDraft]   = useState('')
-  const [saving,  setSaving]  = useState(false)
-  const [error,   setError]   = useState('')
-  const [success, setSuccess] = useState('')
+  const [settings, setSettings] = useState({})
+  const [editing,  setEditing]  = useState(null)
+  const [draft,    setDraft]    = useState('')
+  const [saving,   setSaving]   = useState(false)
+  const [error,    setError]    = useState('')
+  const [success,  setSuccess]  = useState('')
 
   useEffect(() => { load() }, [])
 
   async function load() {
-    const rows = await adminRead('site_settings', token)
-    setAllRows(rows)
-  }
-
-  function getVal(key) {
-    const row = allRows.find(r => r.key === key)
-    if (!row?.value) return {}
-    try { return JSON.parse(row.value) } catch { return row.value || {} }
+    setSettings(await adminReadSettings())
   }
 
   function openEdit(key) {
     setEditing(key)
-    setDraft(JSON.stringify(getVal(key), null, 2))
+    setDraft(JSON.stringify(settings[key] || {}, null, 2))
     setError('')
     setSuccess('')
   }
@@ -41,18 +32,12 @@ export default function SiteSettings() {
   async function handleSave() {
     setSaving(true)
     setError('')
-    setSuccess('')
     let parsed
-    try { parsed = JSON.parse(draft) } catch { setError('Invalid JSON — please fix it before saving.'); setSaving(false); return }
-
-    const valueStr = JSON.stringify(parsed)
-    const exists   = allRows.some(r => r.key === editing)
-    const newRows  = exists
-      ? allRows.map(r => r.key === editing ? { ...r, value: valueStr } : r)
-      : [...allRows, { key: editing, value: valueStr }]
+    try { parsed = JSON.parse(draft) }
+    catch { setError('Invalid JSON — fix it before saving.'); setSaving(false); return }
 
     try {
-      await adminSave('site_settings', newRows, token)
+      await adminSaveSetting(editing, parsed)
       setEditing(null)
       setSuccess('Saved!')
       load()
@@ -68,7 +53,7 @@ export default function SiteSettings() {
     <>
       <div className="page-header">
         <h1>Site Settings</h1>
-        <p>Edit hero content, contact details, and section copy</p>
+        <p>Edit contact details and section copy</p>
       </div>
 
       {success && (
@@ -86,7 +71,7 @@ export default function SiteSettings() {
             </div>
             <div className="card-body">
               <pre style={{ fontSize:'.74rem', color:'var(--ink3)', background:'var(--bg)', padding:12, borderRadius:6, overflow:'auto', maxHeight:160, lineHeight:1.6 }}>
-                {JSON.stringify(getVal(key), null, 2)}
+                {JSON.stringify(settings[key] || {}, null, 2)}
               </pre>
             </div>
           </div>
@@ -104,12 +89,8 @@ export default function SiteSettings() {
               {error && <div className="login-error" style={{ marginBottom:12 }}>{error}</div>}
               <div className="form-group">
                 <label>JSON Value</label>
-                <textarea
-                  rows={18}
-                  value={draft}
-                  onChange={e => setDraft(e.target.value)}
-                  style={{ fontFamily:'monospace', fontSize:'.8rem' }}
-                />
+                <textarea rows={18} value={draft} onChange={e => setDraft(e.target.value)}
+                  style={{ fontFamily:'monospace', fontSize:'.8rem' }} />
                 <div className="hint">Edit the JSON directly. Must be valid JSON.</div>
               </div>
               <div className="form-actions" style={{ marginTop:12 }}>

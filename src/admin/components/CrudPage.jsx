@@ -1,26 +1,23 @@
-import { useState, useEffect, useContext, useRef } from 'react'
-import { TokenContext } from '../context'
-import { adminRead, adminSave, uploadImage } from '../../lib/sheets'
+import { useState, useEffect, useRef } from 'react'
+import { adminRead, adminSave, uploadImage } from '../../lib/db'
 
 export default function CrudPage({
   sheet,
   title,
   description,
-  orderCol = 'sort_order',
   columns,
   fields,
   hasActive = true,
   defaultValues = {},
 }) {
-  const { token } = useContext(TokenContext)
-  const [rows,    setRows]    = useState([])
-  const [loading, setLoading] = useState(true)
-  const [modal,   setModal]   = useState(null)   // null | 'add' | 'edit'
-  const [editing, setEditing] = useState(null)
-  const [form,    setForm]    = useState({})
-  const [saving,       setSaving]       = useState(false)
-  const [error,        setError]        = useState('')
-  const [imgLoading,   setImgLoading]   = useState({})
+  const [rows,       setRows]       = useState([])
+  const [loading,    setLoading]    = useState(true)
+  const [modal,      setModal]      = useState(null)
+  const [editing,    setEditing]    = useState(null)
+  const [form,       setForm]       = useState({})
+  const [saving,     setSaving]     = useState(false)
+  const [error,      setError]      = useState('')
+  const [imgLoading, setImgLoading] = useState({})
   const fileInputRefs = useRef({})
 
   useEffect(() => { load() }, [])
@@ -29,8 +26,7 @@ export default function CrudPage({
     setLoading(true)
     setError('')
     try {
-      const data = await adminRead(sheet, token)
-      setRows(data)
+      setRows(await adminRead(sheet))
     } catch (e) {
       setError(e.message)
     } finally {
@@ -61,15 +57,14 @@ export default function CrudPage({
     setImgLoading(p => ({ ...p, [fieldKey]: true }))
     setError('')
     try {
-      const path = await uploadImage(file)
-      setForm(p => ({ ...p, [fieldKey]: path }))
+      const url = await uploadImage(file)
+      setForm(p => ({ ...p, [fieldKey]: url }))
     } catch (err) {
       setError('Upload failed: ' + err.message)
     } finally {
       setImgLoading(p => ({ ...p, [fieldKey]: false }))
     }
   }
-
 
   async function handleSave(e) {
     e.preventDefault()
@@ -78,16 +73,10 @@ export default function CrudPage({
 
     const payload = { ...form }
 
-    // Parse JSON fields
     for (const f of fields) {
       if (f.type === 'json' && typeof payload[f.key] === 'string') {
-        try {
-          payload[f.key] = JSON.parse(payload[f.key])
-        } catch {
-          setError(`Invalid JSON in "${f.label}"`)
-          setSaving(false)
-          return
-        }
+        try { payload[f.key] = JSON.parse(payload[f.key]) }
+        catch { setError(`Invalid JSON in "${f.label}"`); setSaving(false); return }
       }
     }
 
@@ -95,12 +84,11 @@ export default function CrudPage({
     if (modal === 'edit') {
       newRows = rows.map(r => r.id === editing.id ? { ...editing, ...payload } : r)
     } else {
-      const newRow = { id: crypto.randomUUID(), ...defaultValues, ...payload }
-      newRows = [...rows, newRow]
+      newRows = [...rows, { id: crypto.randomUUID(), ...defaultValues, ...payload }]
     }
 
     try {
-      await adminSave(sheet, newRows, token)
+      await adminSave(sheet, newRows)
       setModal(null)
       await load()
     } catch (err) {
@@ -112,9 +100,8 @@ export default function CrudPage({
 
   async function handleDelete(row) {
     if (!confirm(`Delete "${row[columns[0]?.key] || 'this record'}"? This cannot be undone.`)) return
-    const newRows = rows.filter(r => r.id !== row.id)
     try {
-      await adminSave(sheet, newRows, token)
+      await adminSave(sheet, rows.filter(r => r.id !== row.id))
       load()
     } catch (err) {
       alert(err.message)
@@ -123,11 +110,8 @@ export default function CrudPage({
 
   async function handleToggle(row) {
     const active = row.is_active === 'TRUE' || row.is_active === true
-    const newRows = rows.map(r =>
-      r.id === row.id ? { ...r, is_active: active ? 'FALSE' : 'TRUE' } : r
-    )
     try {
-      await adminSave(sheet, newRows, token)
+      await adminSave(sheet, rows.map(r => r.id === row.id ? { ...r, is_active: active ? 'FALSE' : 'TRUE' } : r))
       load()
     } catch (err) {
       alert(err.message)
@@ -220,24 +204,17 @@ export default function CrudPage({
                     <label>{f.label}{f.required && ' *'}</label>
                     {f.type === 'image' ? (
                       <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                        {/* Current image preview */}
                         {form[f.key] ? (
-                          <div style={{ position:'relative', display:'inline-block', alignSelf:'flex-start' }}>
-                            <img
-                              src={form[f.key]}
-                              alt="preview"
+                          <div>
+                            <img src={form[f.key]} alt="preview"
                               style={{ height:110, maxWidth:220, objectFit:'cover', borderRadius:8, border:'1px solid var(--border)', display:'block' }}
                               onError={e => { e.target.style.opacity='.3' }}
                             />
                             <div style={{ fontSize:'.68rem', color:'var(--ink3)', marginTop:4, wordBreak:'break-all' }}>{form[f.key]}</div>
                           </div>
                         ) : (
-                          <div style={{ width:120, height:80, borderRadius:8, border:'2px dashed var(--border)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--ink3)', fontSize:'.75rem' }}>
-                            No image
-                          </div>
+                          <div style={{ width:120, height:80, borderRadius:8, border:'2px dashed var(--border)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--ink3)', fontSize:'.75rem' }}>No image</div>
                         )}
-
-                        {/* Upload button */}
                         <label style={{
                           display:'inline-flex', alignItems:'center', gap:8,
                           padding:'8px 16px', borderRadius:'var(--r)',
@@ -245,58 +222,38 @@ export default function CrudPage({
                           color: imgLoading[f.key] ? 'var(--ink3)' : '#fff',
                           fontSize:'.8rem', fontWeight:600,
                           cursor: imgLoading[f.key] ? 'not-allowed' : 'pointer',
-                          alignSelf:'flex-start',
-                          border:'none',
+                          alignSelf:'flex-start', border:'none',
                         }}>
                           {imgLoading[f.key] ? '⏳ Uploading…' : '📁 Choose Image'}
-                          <input
-                            type="file"
-                            accept="image/*"
-                            style={{ display:'none' }}
+                          <input type="file" accept="image/*" style={{ display:'none' }}
                             ref={el => { fileInputRefs.current[f.key] = el }}
                             onChange={e => handleImageChange(f.key, e.target.files[0])}
                             disabled={!!imgLoading[f.key]}
                           />
                         </label>
-                        <div className="hint">Max 4 MB · JPG, PNG, WebP · Uploads to project assets folder</div>
+                        <div className="hint">Max 4 MB · JPG, PNG, WebP</div>
                       </div>
                     ) : f.type === 'textarea' || f.type === 'json' ? (
-                      <textarea
-                        rows={f.type === 'json' ? 6 : 3}
+                      <textarea rows={f.type === 'json' ? 6 : 3}
                         value={fieldValue(f.key)}
                         onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
                         required={f.required}
-                        style={{
-                          fontFamily: f.type === 'json' ? 'monospace' : 'inherit',
-                          fontSize: f.type === 'json' ? '.78rem' : undefined,
-                        }}
+                        style={{ fontFamily: f.type === 'json' ? 'monospace' : 'inherit', fontSize: f.type === 'json' ? '.78rem' : undefined }}
                       />
                     ) : f.type === 'select' ? (
-                      <select
-                        value={fieldValue(f.key)}
-                        onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
-                        required={f.required}
-                      >
+                      <select value={fieldValue(f.key)} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} required={f.required}>
                         <option value="">Select…</option>
                         {f.options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                       </select>
                     ) : f.type === 'checkbox' ? (
                       <label className="form-check">
-                        <input
-                          type="checkbox"
-                          checked={!!form[f.key]}
-                          onChange={e => setForm(p => ({ ...p, [f.key]: e.target.checked }))}
-                        />
+                        <input type="checkbox" checked={!!form[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.checked }))} />
                         {f.checkLabel || f.label}
                       </label>
                     ) : (
-                      <input
-                        type={f.type || 'text'}
-                        value={fieldValue(f.key)}
+                      <input type={f.type || 'text'} value={fieldValue(f.key)}
                         onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
-                        required={f.required}
-                        min={f.min}
-                        max={f.max}
+                        required={f.required} min={f.min} max={f.max}
                       />
                     )}
                     {f.hint && <div className="hint">{f.hint}</div>}
@@ -305,11 +262,9 @@ export default function CrudPage({
                 <div className="form-actions">
                   <button type="submit" className="btn btn-primary"
                     disabled={saving || Object.values(imgLoading).some(Boolean)}>
-                    {saving ? 'Saving…' : Object.values(imgLoading).some(Boolean) ? 'Uploading image…' : 'Save'}
+                    {saving ? 'Saving…' : Object.values(imgLoading).some(Boolean) ? 'Uploading…' : 'Save'}
                   </button>
-                  <button type="button" className="btn btn-ghost" onClick={() => setModal(null)}>
-                    Cancel
-                  </button>
+                  <button type="button" className="btn btn-ghost" onClick={() => setModal(null)}>Cancel</button>
                 </div>
               </form>
             </div>
