@@ -1,6 +1,6 @@
 const NAV_LINKS = [
-  { label: 'Flavour Garden', href: '#flavors' },
   { label: 'The Collection', href: '#products' },
+  { label: 'Flavour Garden', href: '#singles' },
   { label: 'From Fruit to Powder', href: '#about' },
   { label: 'How to Enjoy', href: '#uses' },
   { label: 'Customer Love', href: '#reviews' },
@@ -46,16 +46,21 @@ export default function Footer({ footer, contact }) {
               <div className="ft-col-title">Contact Us</div>
               <div className="ft-links">
                 {contact.phone && (
-                  <a href={`tel:${contact.phone}`}>📞 {contact.phone}</a>
+                  <a href={`tel:${contact.phone}`}>Tel: {contact.phone}</a>
                 )}
                 {contact.email && (
-                  <a href={`mailto:${contact.email}`}>✉️ {contact.email}</a>
+                  <a href={`mailto:${contact.email}`}>Email: {contact.email}</a>
                 )}
                 {contact.location && (
-                  <span>📍 {contact.location}</span>
+                  <span>Location: {contact.location}</span>
+                )}
+                {contact.hours && (
+                  <span>Hours: {contact.hours}</span>
                 )}
                 {contact.instagram && (
-                  <span>📸 {contact.instagram}</span>
+                  <a href={`https://instagram.com/${contact.instagram.replace('@','')}`} target="_blank" rel="noopener noreferrer">
+                    Instagram: {contact.instagram}
+                  </a>
                 )}
               </div>
             </div>

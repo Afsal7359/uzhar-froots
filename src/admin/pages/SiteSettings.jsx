@@ -3,7 +3,6 @@ import { TokenContext } from '../context'
 import { adminRead, adminSave } from '../../lib/sheets'
 
 const SETTINGS_KEYS = [
-  { key: 'hero',          label: 'Hero Section' },
   { key: 'contact',       label: 'Contact Info' },
   { key: 'process_intro', label: 'Process Section' },
   { key: 'why_us',        label: 'Why Us Section' },

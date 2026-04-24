@@ -244,6 +244,7 @@ nav.scrolled{box-shadow:0 2px 24px rgba(26,20,16,.09)}
   color:var(--ink);letter-spacing:-.02em;
   margin-bottom:8px;
 }
+.hero-title em{font-style:italic;color:var(--green)}
 .hero-title .line-italic{font-style:italic;color:var(--green);font-weight:800}
 .hero-title .line-amber{color:var(--amber)}
 .hero-title .line-amber-caption{
@@ -373,6 +374,8 @@ section{padding:96px 48px}
 }
 .sec-title em{font-style:italic;color:var(--green)}
 .sec-desc{font-size:1rem;line-height:1.8;color:var(--ink-2);max-width:580px;margin-top:14px}
+.sec-link-cta{display:inline-block;margin-top:14px;font-size:.85rem;font-weight:600;color:var(--green);text-decoration:underline;text-underline-offset:3px;transition:color .2s;cursor:pointer}
+.sec-link-cta:hover{color:var(--amber)}
 .sec-header-row{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:48px}
 .view-all-btn{
   background:var(--white);color:var(--ink);
@@ -652,7 +655,7 @@ section{padding:96px 48px}
   border-radius:var(--r-md);padding:24px;transition:var(--t);position:relative;
 }
 .review-card:hover{box-shadow:var(--shadow-md);transform:translateY(-3px);border-color:var(--border-2)}
-.review-card.highlight{background:var(--green-l);border-color:rgba(27,58,30,.2)}
+.review-card.highlight{background:var(--white)}
 .review-card::before{
   content:'"';font-family:var(--fd);font-size:5rem;font-weight:700;
   color:rgba(27,58,30,.08);position:absolute;top:-8px;right:16px;line-height:1;

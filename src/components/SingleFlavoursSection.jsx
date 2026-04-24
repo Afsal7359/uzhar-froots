@@ -24,6 +24,13 @@ export default function SingleFlavoursSection({ singles, onAddToCart }) {
         <p className="sec-desc">
           Prefer one flavour? Go for a single-flavour box — 15 sachets of your chosen fruit powder.
         </p>
+        <a
+          href="#flavors"
+          className="sec-link-cta"
+          onClick={e => { e.preventDefault(); const el = document.querySelector('#flavors'); if (el) el.scrollIntoView({ behavior: 'smooth' }) }}
+        >
+          Explore our Flavour Garden ↑
+        </a>
 
         <div className="single-grid">
           {singles.map(product => {

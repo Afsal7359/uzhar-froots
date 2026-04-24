@@ -1,8 +1,24 @@
+const FONT_MAP = {
+  rounded: "'Nunito', 'VAG Rounded', sans-serif",
+  serif:   "'Cormorant Garamond', Georgia, serif",
+  sans:    "'DM Sans', sans-serif",
+}
+
 export default function Hero({ hero }) {
   function scrollTo(href) {
     const el = document.querySelector(href)
     if (el) el.scrollIntoView({ behavior: 'smooth' })
   }
+
+  const imageUrl    = hero?.image_url || '/assets/Front Image.jpeg'
+  const titleFont   = FONT_MAP[hero?.title_font] || FONT_MAP.rounded
+  const titleCaption = hero?.title_caption || 'Freeze Dried Goodness'
+  const subtitle    = hero?.subtitle || 'Pure fruit goodness in every sachet.'
+  const ctaPrimary  = hero?.cta_primary || 'Shop Now'
+  const ctaSecondary = hero?.cta_secondary || 'Learn the Science'
+  const tags = Array.isArray(hero?.tags) && hero.tags.length
+    ? hero.tags
+    : ['🍓 15gms fruit powder = 100gms of real Fruit', '🌱 Zero Sugar', '💊 100% Nutrients', '📦 5 Flavours']
 
   return (
     <section className="hero">
@@ -18,29 +34,26 @@ export default function Hero({ hero }) {
             <span>Made in India</span>
           </div>
 
-          <h1 className="hero-title">
-            Uzhar
+          <h1 className="hero-title" style={{ fontFamily: titleFont }}>
+            <em>Uzhar</em>
             <span className="line-italic"> Fruoots</span>
-            <span className="line-amber-caption"> Freeze Dried Goodness</span>
+            <span className="line-amber-caption"> {titleCaption}</span>
           </h1>
 
-          <p className="hero-sub">
-            {hero?.subtitle || 'Pure fruit goodness in every sachet.'}
-          </p>
+          <p className="hero-sub">{subtitle}</p>
 
           <div className="hero-tags">
-            <span className="hero-tag">🍓 15gms fruit powder = 100gms of real Fruit</span>
-            <span className="hero-tag">🌱 Zero Sugar</span>
-            <span className="hero-tag">💊 100% Nutrients</span>
-            <span className="hero-tag">📦 5 Flavours</span>
+            {tags.map((tag, i) => (
+              <span key={i} className="hero-tag">{tag}</span>
+            ))}
           </div>
 
           <div className="hero-cta">
             <button className="btn-primary" onClick={() => scrollTo('#products')}>
-              Shop Now
+              {ctaPrimary}
             </button>
             <button className="btn-outline" onClick={() => scrollTo('#about')}>
-              Learn the Science
+              {ctaSecondary}
             </button>
           </div>
         </div>
@@ -48,7 +61,7 @@ export default function Hero({ hero }) {
         <div className="hero-right">
           <div className="hero-img-wrap">
             <img
-              src="/assets/Front Image.jpeg"
+              src={imageUrl?.startsWith('http') ? imageUrl : imageUrl}
               alt="Uzhar Fruoots Sachet"
               className="hero-sachet"
             />

@@ -12,8 +12,10 @@ const NAV = [
   { to: '/admin/uses',      icon: '🥤', label: 'Use Cases' },
   { to: '/admin/process',   icon: '⚗️', label: 'Process Steps' },
   { section: 'Site' },
+  { to: '/admin/hero',      icon: '🏠', label: 'Hero Section' },
   { to: '/admin/marquee',   icon: '📢', label: 'Marquee Banner' },
   { to: '/admin/stats',     icon: '📈', label: 'Stats Bar' },
+  { to: '/admin/franchise', icon: '🤝', label: 'Franchise' },
   { to: '/admin/settings',  icon: '⚙️', label: 'Site Settings' },
 ]
 

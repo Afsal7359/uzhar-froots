@@ -12,6 +12,8 @@ import ProcessSteps from './pages/ProcessSteps'
 import MarqueeItems from './pages/MarqueeItems'
 import StatsPage from './pages/StatsPage'
 import SiteSettings from './pages/SiteSettings'
+import HeroSettings from './pages/HeroSettings'
+import Franchise from './pages/Franchise'
 import SeedPage from './pages/SeedPage'
 import { adminLogin } from '../lib/sheets'
 import './admin.css'
@@ -139,8 +141,10 @@ export default function AdminApp() {
           <Route path="process"  element={<ProcessSteps />} />
           <Route path="marquee"  element={<MarqueeItems />} />
           <Route path="stats"    element={<StatsPage />} />
-          <Route path="settings" element={<SiteSettings />} />
-          <Route path="seed"     element={<SeedPage />} />
+          <Route path="hero"       element={<HeroSettings />} />
+          <Route path="settings"   element={<SiteSettings />} />
+          <Route path="franchise"  element={<Franchise />} />
+          <Route path="seed"      element={<SeedPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/admin" replace />} />
       </Routes>
